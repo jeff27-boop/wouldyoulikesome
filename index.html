@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Thanksgiving Food Guessing Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#4b2b1c;--orange:#d96b2b;--cream:#fff8e9;--red:#d83b35;--muted:#9b9b9b}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:"Comic Neue","Comic Sans MS",cursive;color:var(--ink);background:#f8ead4}
+body{min-height:100svh}
+button{font:inherit}
+.app{min-height:100svh;padding:clamp(8px,1.5vw,20px);display:flex;flex-direction:column;gap:10px;max-width:1500px;margin:auto}
+.scorebar{display:grid;grid-template-columns:100px minmax(0,1fr) 100px;align-items:center;gap:10px;width:100%}
+.score{background:#fff9ee;border:2px solid #bd7943;border-radius:12px;padding:3px 7px;display:flex;align-items:center;justify-content:space-between;width:100%;height:40px;min-height:40px;box-shadow:0 3px 0 #d9b48c}
+.score.right{flex-direction:row-reverse}
+.score b{font-size:clamp(14px,1.7vw,20px)}
+.score strong{font-size:clamp(19px,2.2vw,27px);color:var(--orange);font-weight:700}
+.game-title{font-weight:700;font-size:clamp(18px,2.5vw,28px);text-align:center;white-space:nowrap}
+.screen{display:none;flex:1;min-height:0}
+.screen.active{display:flex;flex-direction:column;gap:10px}
+.table-area{position:relative;width:100%;max-width:1200px;margin:0 auto;flex:1;min-height:340px;display:flex;align-items:center;justify-content:center;padding:10px 3%}
+.table-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;border-radius:18px;filter:drop-shadow(0 5px 5px #6b452c33)}
+.food-grid{position:relative;z-index:1;width:88%;height:74%;margin-top:14%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:clamp(5px,1vw,14px);align-items:center;justify-items:center}
+.food{border:0;background:transparent;padding:3px;min-width:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#4a291a;border-radius:14px;transition:transform .15s,background .15s,filter .15s}
+.food img{width:100%;height:calc(100% - 26px);max-height:155px;object-fit:contain;filter:drop-shadow(0 3px 2px #56351c55);pointer-events:none}
+.food span{font-size:clamp(13px,1.8vw,21px);font-weight:700;text-transform:lowercase;line-height:1.05;background:#fffdf5;padding:4px 10px;border-radius:8px;box-shadow:0 2px 4px #56351c44;text-shadow:none}
+.food.pickable{cursor:pointer}
+.food.pickable:focus-visible{outline:4px solid #e43d35}
+.food.pickable:active{transform:scale(.94)}
+.food.selected{background:#ffdb5eaa;outline:5px solid #e43d35;box-shadow:0 0 0 8px #fff6;transform:scale(1.04);animation:pulse .8s infinite alternate}
+.food.guessed{filter:grayscale(1);opacity:.55}
+@keyframes pulse{to{filter:drop-shadow(0 0 12px #e52f24);}}
+.shh{position:absolute;z-index:3;top:1%;left:50%;transform:translateX(-50%);font-size:clamp(24px,4vw,44px);filter:drop-shadow(0 2px 2px white);pointer-events:none}
+.hint{text-align:center;font-size:clamp(15px,2vw,20px);font-weight:700;min-height:24px}
+.pattern{display:flex;align-items:center;justify-content:center;gap:clamp(12px,3vw,35px);flex-wrap:wrap;background:#fff9ed;border:2px solid #e5c69e;border-radius:16px;padding:7px 12px}
+.pattern .question{font-size:clamp(20px,3vw,34px);font-weight:700;text-align:center}
+.answer{display:flex;align-items:center;gap:6px;font-size:clamp(15px,2vw,21px);font-weight:700}
+.answer img{height:clamp(42px,7vw,72px);width:auto;max-width:85px;object-fit:contain}
+.hearts{display:flex;justify-content:center;gap:clamp(15px,3vw,35px);padding:2px}
+.guess-tools{position:absolute;z-index:5;top:2%;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:clamp(10px,2vw,20px);padding:3px 12px;background:#fff8e9e8;border:2px solid #d6a36f;border-radius:16px;box-shadow:0 3px 8px #56351c44;white-space:nowrap}
+.reveal-box{position:relative;width:clamp(46px,5vw,66px);height:clamp(36px,4vw,50px);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.secret-preview{position:absolute;inset:5%;width:90%;height:90%;object-fit:contain;filter:drop-shadow(0 3px 3px #56351c55);visibility:hidden}
+.cloche-button{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;cursor:pointer;padding:0;z-index:2}
+.cloche-button img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 3px #56351c66)}
+.reveal-box.revealed .secret-preview{visibility:visible}
+.reveal-box.revealed .cloche-button{display:none}
+.reveal-pop{position:absolute;z-index:4;left:50%;top:50%;transform:translate(-50%,-50%);background:#fffdf5;border:2px solid #e2a04b;border-radius:12px;padding:5px 8px;display:flex;align-items:center;gap:5px;box-shadow:0 5px 14px #321b1b55;font-size:clamp(15px,2vw,22px);font-weight:700;white-space:nowrap;animation:pop .25s ease-out}
+.reveal-pop img{height:clamp(30px,4vw,42px);width:auto}
+#guessScreen .table-area{display:block;overflow:visible}
+#guessScreen .food-grid{position:absolute;left:6%;top:21%;width:88%;height:75%;margin:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:clamp(4px,1vw,12px);z-index:1}
+
+.heart{border:0;background:transparent;padding:0;cursor:pointer;line-height:1;transition:transform .12s}
+.heart:active{transform:scale(.8)}
+.heart span{font-family:Arial,sans-serif;font-size:clamp(38px,6vw,58px);color:#e53935;text-shadow:0 2px 2px #8e201b55}
+.heart.broken span{color:#999;filter:grayscale(1);text-decoration:line-through;opacity:.75}
+.food-grid.static .food{cursor:default}
+.food-grid.static .food.secret-covered{position:relative;cursor:pointer}
+.food-grid.static .food.secret-covered img,.food-grid.static .food.secret-covered span{visibility:hidden}
+.food-cover{position:absolute;inset:5% 7%;z-index:4;border:3px dashed #a64d24;border-radius:16px;background:linear-gradient(145deg,#fff4d9,#e9a65d);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:#713719;font-weight:700;box-shadow:0 4px 10px #4a291a55;cursor:pointer;padding:5px}
+.food-cover .cover-icon{font-size:clamp(28px,5vw,52px)}
+.food-cover .cover-label{background:#fffdf5;padding:4px 8px;border-radius:8px;font-size:clamp(12px,1.7vw,18px);text-align:center}
+.food-cover.revealed{background:#fff8e9;border-style:solid}
+.reveal-pop{position:absolute;z-index:6;left:50%;top:42%;transform:translate(-50%,-50%);background:#fffdf5;border:3px solid #e2a04b;border-radius:18px;padding:10px 16px;display:flex;align-items:center;gap:8px;box-shadow:0 5px 18px #321b1b55;font-size:clamp(19px,3vw,30px);font-weight:700;white-space:nowrap;animation:pop .25s ease-out}
+.reveal-pop img{height:clamp(38px,6vw,60px);width:auto}
+@keyframes pop{from{opacity:0;transform:translate(-50%,-50%) scale(.7)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.controls-note{text-align:center;font-size:clamp(12px,1.5vw,16px);color:#76523c}
+.bottom-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.action{border:0;border-radius:12px;padding:9px 20px;background:#a94e24;color:white;font-weight:700;font-size:18px;box-shadow:0 3px 0 #713319;cursor:pointer}
+.action.secondary{background:#6d6a5e;box-shadow:0 3px 0 #444238}
+.action:active{transform:translateY(2px);box-shadow:none}
+.overlay{position:fixed;inset:0;background:#2b160dcc;display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
+.overlay.show{display:flex}
+.modal{background:var(--cream);border:5px solid #d48a4c;border-radius:22px;padding:25px;max-width:460px;width:100%;text-align:center;box-shadow:0 12px 35px #0006}
+.modal h2{font-size:clamp(25px,5vw,38px);margin:0 0 8px}
+.modal p{font-size:clamp(21px,3vw,28px);font-weight:700;margin:8px 0 18px}.modal-food{display:block;width:clamp(120px,28vw,220px);height:clamp(100px,22vw,170px);object-fit:contain;margin:0 auto 8px;filter:drop-shadow(0 3px 4px #56351c44)}
+@media(max-width:600px){
+ .app{padding:7px;gap:7px}.scorebar{grid-template-columns:82px minmax(0,1fr) 82px;gap:6px}.score{height:36px;min-height:36px;padding:2px 5px;border-width:2px}.game-title{font-size:16px}
+ .table-area{min-height:300px;padding:7px 1%}.food-grid{width:94%;height:88%;gap:3px}
+ .food img{height:calc(100% - 30px)}.food span{font-size:clamp(11px,3vw,15px);padding:3px 6px}
+ .pattern{gap:6px;padding:6px}.pattern .question{font-size:20px}.answer{font-size:14px}.answer img{height:40px}
+@media(orientation:landscape) and (max-height:520px){
+ .app{gap:5px}.scorebar{grid-template-columns:82px minmax(0,1fr) 82px;gap:5px}.score{height:36px;min-height:36px}.table-area{min-height:210px}.food img{max-height:90px}.pattern{padding:3px}.answer img{height:35px}.heart span{font-size:34px}.guess-tools{gap:7px;padding:2px 7px}.reveal-box{height:30px;width:40px}
+ #guessScreen .food-grid{top:22%;height:73%;left:4%;width:92%;gap:3px}
+ #guessScreen .food img{height:calc(100% - 30px)}
+ #guessScreen .food span{font-size:clamp(10px,2.8vw,14px);padding:3px 5px}
+ #guessScreen .guess-tools{top:2%;gap:7px;padding:2px 7px}
+ #guessScreen .reveal-box{width:42px;height:32px}
+
+}
+
+/* Final scoreboard fix: two fixed-size cards on BOTH screens */
+.app > header.scorebar{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:10px !important;
+  width:100% !important;
+  height:42px !important;
+  min-height:42px !important;
+  padding:0 !important;
+  margin:0 !important;
+  background:transparent !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
+.app > header.scorebar > .score{
+  display:flex !important;
+  flex:0 0 100px !important;
+  width:100px !important;
+  max-width:100px !important;
+  height:42px !important;
+  min-height:42px !important;
+  padding:4px 9px !important;
+  background:#fff9ee !important;
+  border:2px solid #bd7943 !important;
+  border-radius:12px !important;
+  box-shadow:0 3px 0 #d9b48c !important;
+}
+.app > header.scorebar > .game-title{
+  display:block !important;
+  flex:1 1 auto !important;
+  min-width:0 !important;
+  text-align:center !important;
+  white-space:nowrap !important;
+}
+@media(max-width:600px){
+  .app > header.scorebar{height:36px !important;min-height:36px !important;gap:6px !important}
+  .app > header.scorebar > .score{
+    flex-basis:82px !important;width:82px !important;max-width:82px !important;
+    height:36px !important;min-height:36px !important;padding:2px 5px !important
+  }
+  .app > header.scorebar > .game-title{font-size:16px !important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="scorebar">
+    <div class="score"><b>S1</b><strong id="score1">0</strong></div>
+    <div class="game-title">Would You Like Some?</div>
+    <div class="score right"><b>S2</b><strong id="score2">0</strong></div>
+  </header>
+
+  <main id="chooseScreen" class="screen active">
+    <div class="hint" id="chooseHint">S1 🤫</div>
+    <div class="table-area">
+      <img class="table-bg" src="https://i.postimg.cc/d3sdCBcb/Autumn-Leaf-Table-Runner.png" alt="">
+      <div class="shh">🤫</div>
+      <div class="food-grid" id="pickGrid"></div>
+    </div>
+  </main>
+
+  <main id="guessScreen" class="screen">
+    <div class="pattern">
+      <div class="question">Would you like some <span id="blank">______</span>?</div>
+      <div class="answer"><img src="https://i.postimg.cc/brybnTjf/Cheerful-Thumbs-Up-Emoji-Boy.png" alt="">Yes, please.</div>
+      <div class="answer"><img src="https://i.postimg.cc/KjGLTNyS/Cheerful-Polite-Stop-Gesture.png" alt="">No, thank you.</div>
+    </div>
+    <div class="hint" id="guessHint">S2 🗣️❓</div>
+    <div class="table-area">
+      <div class="guess-tools">
+        <div class="hearts" id="hearts"></div>
+        <div class="reveal-box" id="revealBox">
+          <img class="secret-preview" id="secretPreview" alt="Secret food">
+          <button class="cloche-button" id="clocheButton" type="button" aria-label="Reveal the secret food">
+            <img src="https://i.postimg.cc/SsPRQFG4/Picture6.png" alt="Small silver food cover">
+          </button>
+        </div>
+      </div>
+      <img class="table-bg" src="https://i.postimg.cc/d3sdCBcb/Autumn-Leaf-Table-Runner.png" alt="">
+      <div class="food-grid static" id="guessGrid"></div>
+    </div>
+  </main>
+
+  <div class="bottom-actions" id="bottomActions" style="display:none">
+    <button class="action secondary" id="resetBtn">↻ Restart game</button>
+  </div>
+</div>
+
+<div class="overlay" id="modal">
+  <div class="modal">
+    <h2 id="modalTitle">🎉</h2>
+    <img id="modalFood" class="modal-food" alt="Food revealed">
+    <p id="modalText"></p>
+    <button class="action" id="nextBtn">Next turn</button>
+  </div>
+</div>
+
+<script>
+const foods = [
+ {name:"pumpkin pie",src:"https://i.postimg.cc/GmqfT7wp/pumpkin-pie.png"},
+ {name:"turkey",src:"https://i.postimg.cc/fbyrccD3/turkey.png"},
+ {name:"ham",src:"https://i.postimg.cc/mrk5YYBz/ham.png"},
+ {name:"corn",src:"https://i.postimg.cc/tgJM33pg/corn.png"},
+ {name:"mashed potatoes",src:"https://i.postimg.cc/7LhW33w5/mashed-potatoes.png"},
+ {name:"steak",src:"https://i.postimg.cc/Y0rgF3BT/beef-steak-served-in-plate-on-white-background-grilled-steak-medium-rare-png.webp"},
+ {name:"pizza",src:"https://i.postimg.cc/brybnTjX/pizza-png-15.png"},
+ {name:"soup",src:"https://i.postimg.cc/WzNrZncK/pngtree-steaming-hot-soup-with-vegetables-png-image-13169418.png"}
+];
+let scores=[0,0], chooser=1, secret=null, lives=3, locked=false, audioCtx=null, revealed=false;
+
+const $=id=>document.getElementById(id);
+function sound(type){
+ try{
+  audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==="suspended") audioCtx.resume();
+  const now=audioCtx.currentTime, osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
+  osc.connect(gain);gain.connect(audioCtx.destination);
+  if(type==="select"){osc.type="sine";osc.frequency.setValueAtTime(660,now);osc.frequency.setValueAtTime(880,now+.12);gain.gain.setValueAtTime(.001,now);gain.gain.exponentialRampToValueAtTime(.18,now+.03);gain.gain.exponentialRampToValueAtTime(.001,now+.35);osc.start(now);osc.stop(now+.36);}
+  else if(type==="break"){osc.type="triangle";osc.frequency.setValueAtTime(260,now);osc.frequency.exponentialRampToValueAtTime(90,now+.28);gain.gain.setValueAtTime(.22,now);gain.gain.exponentialRampToValueAtTime(.001,now+.3);osc.start(now);osc.stop(now+.31);}
+  else {osc.type="sine";osc.frequency.setValueAtTime(520,now);osc.frequency.setValueAtTime(780,now+.12);gain.gain.setValueAtTime(.15,now);gain.gain.exponentialRampToValueAtTime(.001,now+.45);osc.start(now);osc.stop(now+.46);}
+ }catch(e){}
+}
+function renderScores(){ $("score1").textContent=scores[0];$("score2").textContent=scores[1]; }
+function makeFood(item,interactive=false,index=0){
+ const el=document.createElement(interactive?"button":"div");
+ el.className="food"+(interactive?" pickable":"");
+ if(interactive){el.type="button";el.setAttribute("aria-label","secretly choose "+item.name);el.addEventListener("click",()=>chooseFood(index));}
+ const img=document.createElement("img");img.src=item.src;img.alt=item.name;
+ const label=document.createElement("span");label.textContent=item.name;
+ el.append(img,label);return el;
+}
+function renderPick(){
+ const grid=$("pickGrid");grid.innerHTML="";
+ foods.forEach((f,i)=>grid.appendChild(makeFood(f,true,i)));
+}
+function renderGuess(){
+ const grid=$("guessGrid");grid.innerHTML="";
+ foods.forEach(f=>grid.appendChild(makeFood(f)));
+ $("secretPreview").src=foods[secret].src;
+ $("secretPreview").style.visibility="hidden";
+ $("revealBox").classList.remove("revealed");
+ $("revealBox").querySelector(".reveal-pop")?.remove();
+ $("clocheButton").style.display="block";
+}
+function revealSecret(){
+ if(!locked||revealed)return;
+ revealed=true;
+ $("revealBox").classList.add("revealed");
+ $("clocheButton").style.display="none";
+ $("secretPreview").style.visibility="visible";
+ scores[chooser===1?0:1]++;renderScores();sound("win");
+ showResult("Yes, please!", true);
+}
+function renderHearts(){
+ const wrap=$("hearts");wrap.innerHTML="";
+ for(let i=0;i<3;i++){
+  const b=document.createElement("button");b.className="heart"+(i>=lives?" broken":"");
+  b.type="button";b.setAttribute("aria-label",i<lives?"lose one heart":"broken heart");
+  b.innerHTML="<span>"+(i<lives?"♥":"♡")+"</span>";
+  if(i<lives)b.addEventListener("click",loseHeart);
+  wrap.appendChild(b);
+ }
+}
+function showScreen(which){
+ $("chooseScreen").classList.toggle("active",which==="choose");
+ document.querySelector(".game-title").style.display="block";
+ $("guessScreen").classList.toggle("active",which==="guess");
+ $("bottomActions").style.display=which==="guess"?"flex":"none";
+}
+function chooseFood(index){
+ if(locked)return;
+ secret=index;locked=true;
+ const buttons=[...$("pickGrid").children];
+ buttons[index].classList.add("selected");
+ $("chooseHint").textContent="🤫 S1 has secretly chosen a food!";
+ sound("select");
+ setTimeout(()=>{
+  lives=3;revealed=false;renderHearts();renderGuess();
+  $("guessHint").textContent=`S${chooser===1?2:1} 🗣️❓`;
+  $("blank").textContent="______";
+  showScreen("guess");
+ },1000);
+}
+function loseHeart(){
+ if(!locked||lives<=0||revealed)return;
+ lives--;renderHearts();sound("break");
+ if(lives===0){
+  finishRound(false);
+ }
+}
+
+
+function showResult(sentence, correct){
+ locked=false;
+ $("modalTitle").textContent=correct?"🎉":"";
+ $("modalFood").src=foods[secret].src;
+ $("modalText").textContent=sentence;
+ $("nextBtn").textContent="Next turn";
+ $("modal").classList.add("show");
+}
+function finishRound(correct){
+ if(correct)return;
+ showResult(`I'd like some ${foods[secret].name}, please.`, false);
+}
+function nextTurn(){
+ $("modal").classList.remove("show");
+ $("modalFood").src="";
+ const oldPop=$("revealBox").querySelector(".reveal-pop");if(oldPop)oldPop.remove();
+ chooser=chooser===1?2:1;secret=null;lives=3;locked=false;revealed=false;
+ $("chooseHint").textContent=`S${chooser} 🤫`;
+ renderPick();showScreen("choose");
+}
+
+$("clocheButton").addEventListener("click",revealSecret);
+$("nextBtn").addEventListener("click",nextTurn);
+$("resetBtn").addEventListener("click",()=>{
+ scores=[0,0];chooser=1;secret=null;lives=3;locked=false;revealed=false;renderScores();renderPick();$("modal").classList.remove("show");$("modalFood").src="";const pop=$("revealBox").querySelector(".reveal-pop");if(pop)pop.remove();$("revealBox").classList.remove("revealed");$("clocheButton").style.display="block";$("secretPreview").style.visibility="hidden";$("chooseHint").textContent="S1 🤫";showScreen("choose");
+});
+renderScores();renderPick();renderGuess();
+</script>
+</body>
+</html>
